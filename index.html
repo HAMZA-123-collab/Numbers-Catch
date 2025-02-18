@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falling Numbers</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, skyblue, white);
+            text-align: center;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #playerBox {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            width: 100px;
+            height: 30px;
+            background: linear-gradient(to right, red, yellow);
+            transform: translateX(-50%);
+        }
+        .fallingNumber {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #scoreboard {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+        }
+        #startButton, #restartButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        #restartButton {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="playerBox"></div>
+        <div id="scoreboard">Score: 0 | High Score: 0 | Time: 1:30</div>
+        <button id="startButton">Start Game</button>
+        <button id="restartButton">Restart</button>
+    </div>
+    
+    <script>
+        let playerBox = document.getElementById("playerBox");
+        let gameContainer = document.getElementById("gameContainer");
+        let scoreboard = document.getElementById("scoreboard");
+        let startButton = document.getElementById("startButton");
+        let restartButton = document.getElementById("restartButton");
+        let score = 0, highScore = 0, gameInterval, timeLeft = 90, gameRunning = false;
+        let playerSpeed = 5, playerX = window.innerWidth / 2;
+        
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "ArrowLeft") {
+                playerX -= playerSpeed;
+            } else if (event.key === "ArrowRight") {
+                playerX += playerSpeed;
+            }
+            playerX = Math.max(0, Math.min(window.innerWidth - 100, playerX));
+            playerBox.style.left = playerX + "px";
+        });
+        
+        function spawnNumber() {
+            if (!gameRunning) return;
+            let num = Math.floor(Math.random() * 10) + 1;
+            let number = document.createElement("div");
+            number.classList.add("fallingNumber");
+            number.innerText = num;
+            number.style.left = `${Math.random() * (window.innerWidth - 30)}px`;
+            number.style.top = "0px";
+            number.style.color = num <= 3 ? "green" : num <= 6 ? "orange" : "red";
+            gameContainer.appendChild(number);
+            
+            let speed = 1 + num * 0.5;
+            let fallInterval = setInterval(() => {
+                if (!gameRunning) return;
+                number.style.top = `${number.offsetTop + speed}px`;
+                let playerRect = playerBox.getBoundingClientRect();
+                let numberRect = number.getBoundingClientRect();
+                
+                if (numberRect.bottom >= playerRect.top &&
+                    numberRect.left >= playerRect.left &&
+                    numberRect.right <= playerRect.right) {
+                    score += num;
+                    scoreboard.innerText = `Score: ${score} | High Score: ${highScore} | Time: ${timeLeft}s`;
+                    number.remove();
+                    clearInterval(fallInterval);
+                }
+                if (number.offsetTop > window.innerHeight) {
+                    number.remove();
+                    clearInterval(fallInterval);
+                }
+            }, 30);
+        }
+        
+        function startGame() {
+            gameRunning = true;
+            score = 0;
+            timeLeft = 90;
+            scoreboard.innerText = `Score: ${score} | High Score: ${highScore} | Time: ${timeLeft}s`;
+            startButton.style.display = "none";
+            restartButton.style.display = "none";
+            
+            gameInterval = setInterval(spawnNumber, 800);
+
+            let timer = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(gameInterval);
+                    clearInterval(timer);
+                    gameRunning = false;
+                    if (score > highScore) highScore = score;
+                    restartButton.style.display = "block";
+                }
+                scoreboard.innerText = `Score: ${score} | High Score: ${highScore} | Time: ${timeLeft}s`;
+                timeLeft--;
+            }, 1000);
+        }
+
+        startButton.addEventListener("click", startGame);
+        restartButton.addEventListener("click", startGame);
+    </script>
+</body>
+</html>
