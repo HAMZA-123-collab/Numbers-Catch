@@ -1,140 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Falling Numbers</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: linear-gradient(to bottom, skyblue, white);
-            text-align: center;
-        }
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-        #playerBox {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            width: 100px;
-            height: 30px;
-            background: linear-gradient(to right, red, yellow);
-            transform: translateX(-50%);
-        }
-        .fallingNumber {
-            position: absolute;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        #scoreboard {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 20px;
-        }
-        #startButton, #restartButton {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        #restartButton {
-            display: none;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Falling Numbers</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: linear-gradient(to bottom, #8B0000, #0000CD);
+  }
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  #startButton, #restartButton {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    font-size: 20px;
+    cursor: pointer;
+    background: linear-gradient(to bottom, #4CAF50, #2E7D32);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    display: none;
+  }
+  #score, #highScore, #timer {
+    position: absolute;
+    top: 10px;
+    font-size: 20px;
+    color: white;
+    text-shadow: 1px 1px 2px black;
+  }
+  #score { left: 10px; }
+  #highScore { right: 10px; }
+  #timer { left: 50%; transform: translateX(-50%); }
+</style>
 </head>
 <body>
-    <div id="gameContainer">
-        <div id="playerBox"></div>
-        <div id="scoreboard">Score: 0 | High Score: 0 | Time: 1:30</div>
-        <button id="startButton">Start Game</button>
-        <button id="restartButton">Restart</button>
-    </div>
-    
-    <script>
-        let playerBox = document.getElementById("playerBox");
-        let gameContainer = document.getElementById("gameContainer");
-        let scoreboard = document.getElementById("scoreboard");
-        let startButton = document.getElementById("startButton");
-        let restartButton = document.getElementById("restartButton");
-        let score = 0, highScore = 0, gameInterval, timeLeft = 90, gameRunning = false;
-        let playerSpeed = 5, playerX = window.innerWidth / 2;
-        
-        document.addEventListener("keydown", function(event) {
-            if (event.key === "ArrowLeft") {
-                playerX -= playerSpeed;
-            } else if (event.key === "ArrowRight") {
-                playerX += playerSpeed;
-            }
-            playerX = Math.max(0, Math.min(window.innerWidth - 100, playerX));
-            playerBox.style.left = playerX + "px";
-        });
-        
-        function spawnNumber() {
-            if (!gameRunning) return;
-            let num = Math.floor(Math.random() * 10) + 1;
-            let number = document.createElement("div");
-            number.classList.add("fallingNumber");
-            number.innerText = num;
-            number.style.left = `${Math.random() * (window.innerWidth - 30)}px`;
-            number.style.top = "0px";
-            number.style.color = num <= 3 ? "green" : num <= 6 ? "orange" : "red";
-            gameContainer.appendChild(number);
-            
-            let speed = 1 + num * 0.5;
-            let fallInterval = setInterval(() => {
-                if (!gameRunning) return;
-                number.style.top = `${number.offsetTop + speed}px`;
-                let playerRect = playerBox.getBoundingClientRect();
-                let numberRect = number.getBoundingClientRect();
-                
-                if (numberRect.bottom >= playerRect.top &&
-                    numberRect.left >= playerRect.left &&
-                    numberRect.right <= playerRect.right) {
-                    score += num;
-                    scoreboard.innerText = `Score: ${score} | High Score: ${highScore} | Time: ${timeLeft}s`;
-                    number.remove();
-                    clearInterval(fallInterval);
-                }
-                if (number.offsetTop > window.innerHeight) {
-                    number.remove();
-                    clearInterval(fallInterval);
-                }
-            }, 30);
-        }
-        
-        function startGame() {
-            gameRunning = true;
-            score = 0;
-            timeLeft = 90;
-            scoreboard.innerText = `Score: ${score} | High Score: ${highScore} | Time: ${timeLeft}s`;
-            startButton.style.display = "none";
-            restartButton.style.display = "none";
-            
-            gameInterval = setInterval(spawnNumber, 800);
+<canvas id="gameCanvas"></canvas>
+<div id="startButton">Start Game</div>
+<div id="restartButton">Restart Game</div>
+<div id="score">Score: 0</div>
+<div id="highScore">High Score: 0</div>
+<div id="timer">Time: 1:30</div>
 
-            let timer = setInterval(() => {
-                if (timeLeft <= 0) {
-                    clearInterval(gameInterval);
-                    clearInterval(timer);
-                    gameRunning = false;
-                    if (score > highScore) highScore = score;
-                    restartButton.style.display = "block";
-                }
-                scoreboard.innerText = `Score: ${score} | High Score: ${highScore} | Time: ${timeLeft}s`;
-                timeLeft--;
-            }, 1000);
-        }
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const startButton = document.getElementById('startButton');
+  const restartButton = document.getElementById('restartButton');
+  const scoreDisplay = document.getElementById('score');
+  const highScoreDisplay = document.getElementById('highScore');
+  const timerDisplay = document.getElementById('timer');
 
-        startButton.addEventListener("click", startGame);
-        restartButton.addEventListener("click", startGame);
-    </script>
+  let box, numbers, score, highScore, time, gameInterval, timerInterval;
+  let leftPressed = false, rightPressed = false;
+
+  function startGame() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    box = {
+      x: canvas.width / 2 - 50,
+      y: canvas.height - 60,
+      width: 100,
+      height: 50,
+      dx: 7
+    };
+
+    numbers = [];
+    score = 0;
+    time = 90;
+    highScore = localStorage.getItem('highScore') || 0;
+
+    scoreDisplay.innerText = `Score: ${score}`;
+    highScoreDisplay.innerText = `High Score: ${highScore}`;
+    timerDisplay.innerText = `Time: ${formatTime(time)}`;
+
+    startButton.style.display = 'none';
+    restartButton.style.display = 'none';
+
+    gameInterval = setInterval(updateGame, 1000 / 60);
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+
+  function updateGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawBox();
+    drawNumbers();
+    updateNumbers();
+    checkCollisions();
+    updateBoxPosition();
+  }
+
+  function drawBox() {
+    const gradient = ctx.createLinearGradient(box.x, box.y, box.x + box.width, box.y + box.height);
+    gradient.addColorStop(0, 'blue');
+    gradient.addColorStop(1, 'cyan');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(box.x, box.y, box.width, box.height);
+  }
+
+  function drawNumbers() {
+    numbers.forEach(num => {
+      ctx.save();
+      ctx.translate(num.x + 10, num.y + 10);
+      ctx.rotate(num.angle * Math.PI / 180);
+      ctx.translate(-num.x - 10, -num.y - 10);
+
+      ctx.font = '30px Arial';
+      ctx.fillStyle = num.color;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = 'white';
+      ctx.fillText(num.value, num.x, num.y);
+
+      ctx.restore();
+    });
+  }
+
+  function updateNumbers() {
+    if (Math.random() < 0.05) {
+      const value = getRandomNumber();
+      const speed = getSpeed(value);
+      const color = getColor(value);
+      numbers.push({ x: Math.random() * canvas.width, y: -30, value, speed, color, angle: 0, angleSpeed: (Math.random() - 0.5) * 5 });
+    }
+
+    numbers = numbers.filter(num => num.y < canvas.height + 30);
+    numbers.forEach(num => {
+      num.y += num.speed;
+      num.angle += num.angleSpeed;
+    });
+  }
+
+  function checkCollisions() {
+    numbers.forEach((num, index) => {
+      if (
+        num.x < box.x + box.width &&
+        num.x + 20 > box.x &&
+        num.y < box.y + box.height &&
+        num.y + 20 > box.y
+      ) {
+        score += num.value;
+        scoreDisplay.innerText = `Score: ${score}`;
+        numbers.splice(index, 1);
+      }
+    });
+  }
+
+  function updateTimer() {
+    if (time === 0) {
+      endGame();
+      return;
+    }
+    time -= 1;
+    timerDisplay.innerText = `Time: ${formatTime(time)}`;
+  }
+
+  function endGame() {
+    clearInterval(gameInterval);
+    clearInterval(timerInterval);
+    restartButton.style.display = 'block';
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('highScore', highScore);
+      highScoreDisplay.innerText = `High Score: ${highScore}`;
+    }
+  }
+
+  function getRandomNumber() {
+    const rand = Math.random();
+    if (rand < 0.5) return Math.ceil(Math.random() * 3); // common
+    if (rand < 0.8) return Math.ceil(Math.random() * 3) + 3; // uncommon
+    return Math.ceil(Math.random() * 4) + 6; // rare
+  }
+
+  function getSpeed(value) {
+    return value / 2; // higher value, higher speed
+  }
+
+  function getColor(value) {
+    if (value <= 3) return 'green';
+    if (value <= 6) return 'orange';
+    return 'red';
+  }
+
+  function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+  }
+
+  function updateBoxPosition() {
+    if (leftPressed && box.x > 0) box.x -= box.dx;
+    if (rightPressed && box.x + box.width < canvas.width) box.x += box.dx;
+  }
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') leftPressed = true;
+    if (e.key === 'ArrowRight') rightPressed = true;
+  });
+
+  window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft') leftPressed = false;
+    if (e.key === 'ArrowRight') rightPressed = false;
+  });
+
+  startButton.addEventListener('click', startGame);
+  restartButton.addEventListener('click', startGame);
+
+  startButton.style.display = 'block';
+</script>
 </body>
 </html>
